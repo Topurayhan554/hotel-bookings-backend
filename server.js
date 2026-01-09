@@ -9,8 +9,10 @@ connectDB();
 const app = express();
 app.use(cors());
 
+// ✅ Clerk webhook (RAW BODY – must be before express.json)
 app.use("/api/clerk", express.raw({ type: "application/json" }), clerkWebhooks);
 
+// ✅ Normal JSON routes
 app.use(express.json());
 
 app.get("/", (req, res) => {

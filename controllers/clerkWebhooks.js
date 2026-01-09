@@ -3,13 +3,7 @@ import { Webhook } from "svix";
 
 const clerkWebhooks = async (req, res) => {
   try {
-    const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
-
-    if (!webhookSecret) {
-      return res.status(500).json({ message: "Webhook secret missing" });
-    }
-
-    const wh = new Webhook(webhookSecret);
+    const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
 
     const headers = {
       "svix-id": req.headers["svix-id"],
@@ -17,13 +11,15 @@ const clerkWebhooks = async (req, res) => {
       "svix-signature": req.headers["svix-signature"],
     };
 
-    // RAW body
+    // ✅ RAW BODY
     const payload = req.body.toString();
 
-    // Verify webhook
+    // ✅ VERIFIED EVENT
     const event = wh.verify(payload, headers);
 
     const { data, type } = event;
+
+    console.log("Webhook event:", type); // 🔍 DEBUG
 
     const userData = {
       _id: data.id,
@@ -32,27 +28,15 @@ const clerkWebhooks = async (req, res) => {
       image: data.image_url,
     };
 
-    switch (type) {
-      case "user.created":
-        await User.create(userData);
-        break;
-
-      case "user.updated":
-        await User.findByIdAndUpdate(data.id, userData);
-        break;
-
-      case "user.deleted":
-        await User.findByIdAndDelete(data.id);
-        break;
-
-      default:
-        break;
+    if (type === "user.created") {
+      await User.create(userData);
+      console.log("User saved to DB");
     }
 
     res.status(200).json({ success: true });
   } catch (error) {
     console.error("Webhook error:", error.message);
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success: false });
   }
 };
 
